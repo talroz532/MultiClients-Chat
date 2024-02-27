@@ -16,7 +16,9 @@ then run`` python client.py `` for each client
 ``!kick {nickname} - kick specific client``
 
 ``!exit - close all clients``
-
+<br>
+#### client premmisions:
+``!exit - client exits from the server``
 <br><br>
 
 ### TODO list:
