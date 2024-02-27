@@ -1,68 +1,98 @@
-import socket
-import threading
+import socket, threading, sys
 
 IP = "127.0.0.1"
 PORT = 8081
 
 
 def main():
-    client = create_socket()
+    exit_event = threading.Event()
+    client = create_socket(exit_event)
 
-    if client != 1:
-        print("client socket created successfully")
+    if client:
+        print("Client socket created successfully")
         nickname = get_nickname()
 
-        threading.Thread(target=send_data, args=(client,nickname)).start()
-        threading.Thread(target=recv_data, args=(client,)).start()
+        send_thread = threading.Thread(target=send_data, args=(client, nickname, exit_event))
+        recv_thread = threading.Thread(target=recv_data, args=(client, exit_event))
+
+        send_thread.start()
+        recv_thread.start()
+
+        exit_program(send_thread, recv_thread, client)
+
     else:
-        print("client failed!")
-        return -1
+        print("Client failed!")
+
+
+def create_socket(exit_event):
+    try:
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect((IP, PORT))
+        return client
+    except (socket.error, OSError) as e:
+        print(f"Error creating socket: {e}")
+        exit_event.set()
+        return None
+
+
+def send_data(client, nickname, exit_event):
+    try:
+        client.send(str(nickname).encode())
+    except socket.error as e:
+        print(f"Error sending nickname to server: {e}")
+
+    while not exit_event.is_set():
+        msg = input()
+        if msg == "!exit":
+            exit_event.set()
+            break
+
+        if msg.strip():
+            try:
+                client.send(msg.encode())
+            except socket.error as e:
+                print(f"Error sending message: {e}")
+
+    client.close()
+
+
+def recv_data(client, exit_event):
+    while not exit_event.is_set():
+        try:
+            msg = client.recv(1024)
+            if not msg:
+                # If no data is received, the connection might be closed
+                print("Connection closed by the remote host.")
+                exit_event.set()
+                break
+            print(f"Received message: {msg.decode('utf-8')}")
+        except Exception as e:
+            if not exit_event.is_set():
+                print(f"Error receiving message: {e}")
 
 
 def get_nickname():
-
     while True:
-        nickname = input("enter your nickname: ")
+        nickname = input("Enter your nickname: ")
 
         if len(nickname) > 20:
             print("Max nickname characters is 20")
         elif nickname.isdigit():
             print("Nickname must contain letters")
         elif nickname.isspace():
-            print("Nickname can not contain space")
+            print("Nickname cannot contain space")
         else:
             break
 
     return nickname
 
 
-def create_socket():
-    try:
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((IP, PORT))
+def exit_program(send_thread, recv_thread, client):
+    send_thread.join()
+    recv_thread.join()
 
-    except Exception as e:
-        print(str(e))
-        return -1
-
-    return client
-
-
-def send_data(client, nickname):
-    try:
-        client.send(str(nickname).encode())
-    except Exception as e:
-        print("error while sending nickname to server: "+ str(e))
-    while True:
-        msg = input()
-        client.send(msg.encode())
-
-
-def recv_data(client):
-
-    while True:
-        msg = client.recv(1024)
-        print(f"{msg.decode('utf-8')}" )
+    client.close()
+    sys.exit()
 
 
 if __name__ == '__main__':
