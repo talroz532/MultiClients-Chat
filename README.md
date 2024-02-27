@@ -2,7 +2,7 @@
 MultiClients Chat created using python
 Simple socket program to communication between server and clients.
 
-Libraries I used: socket. threading
+Libraries I used: socket, threading, sys, time
 
 first run `` python server.py `` in order to create a server
 
