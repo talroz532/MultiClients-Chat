@@ -25,3 +25,6 @@ then run`` python client.py `` for each client
 - [x] handling more errors
 - [ ] create a log file
 - [x] close sockets correctly
+- [ ] add type annotations
+- [ ] fix ``getnickname()`` - add test if nickname is already in use
+- [ ] make clients a dict and not a list
