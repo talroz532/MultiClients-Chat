@@ -1,26 +1,32 @@
 from socket import *
-import threading
+import threading, time, sys
 
 IP = "127.0.0.1"
 PORT = 8081
 
 
 def main():
-    clients = []
-
-    server = create_server()
+    exit_event = threading.Event()  # Event to signal threads to exit
+    clients = [] #list of all clients
+    server = create_server() 
 
     if server != -1:
         print("[+] server created successfully ")
-        threading.Thread(target=add_client, args=(server, clients,)).start()
-        threading.Thread(target=recv_data, args=(clients, )).start()
-        threading.Thread(target=send_data, args=(clients,)).start()
+        add_client_thread = threading.Thread(target=add_client, args=(server, clients, exit_event))
+        recv_thread = threading.Thread(target=recv_data, args=(clients, exit_event))
+        send_thread = threading.Thread(target=send_data, args=(clients, exit_event))
+
+        add_client_thread.start()
+        recv_thread.start()
+        send_thread.start()
+
+        exit_program(add_client_thread,recv_thread,send_thread,server,clients)
 
     else:
         print("server failed!")
         return -1
 
-
+# setup server
 def create_server():
     try:
         server = socket(AF_INET, SOCK_STREAM)
@@ -33,96 +39,108 @@ def create_server():
 
     return server
 
+# function to add client when client is tring to connect
+def add_client(server, clients, exit_event):
+    server.settimeout(1)  # Set a timeout on server.accept()
 
-def add_client(server, clients):
-
-    while True:
+    while not exit_event.is_set():
         try:
             conn, addr = server.accept()
             nickname = conn.recv(1024).decode('utf-8')
             clients.append((conn, addr, nickname))
-            print(f"new connection from {str(addr)} {nickname}" )
-
+            print(f"new connection from {str(addr)} {nickname}")
+        except timeout:
+            pass
         except Exception as e:
             print(f"Error accepting connection: {e}")
 
 
-def send_data(clients):
-    while True:
+# function to send data to all clients
+def send_data(clients, exit_event):
+    while not exit_event.is_set():  # Check exit_event before continuing
         msg = input()
-        menu(msg, clients)
-        for client in clients:
-            conn, addr, _ = client
-            conn.send(msg.encode())
+        if menu(msg, clients, exit_event) == 0:
+            msg = "[SERVER] " + msg
+            for client in clients:
+                conn, addr, _ = client
+                try:
+                    conn.send(msg.encode())
+                except Exception as e:
+                    print(f"Error sending data to {addr}: {e}")
 
 
-def recv_data(clients):
-    while True:
+# function to receive data from clients
+def recv_data(clients, exit_event):
+    while not exit_event.is_set():  # Check exit_event before continuing
         for client in clients:
             conn, addr, nickname = client
             try:
-                # Set the socket to non-blocking mode
                 conn.setblocking(0)
-
-                # Attempt to receive data
                 msg = conn.recv(1024).decode('utf-8')
-
                 if msg:
-                    broadcasting(clients,msg, client)
+                    broadcasting(clients, msg, client)
                     print(f"{addr} [{nickname}] {msg}")
 
             except BlockingIOError:
-                # No data available on the socket, continue to the next client
                 pass
             except ConnectionResetError:
-                # Connection forcibly closed by the remote host (client exited)
                 print(f"Connection closed by {addr} [{nickname}]")
-                # Broadcast a message to inform other clients about the disconnection
                 broadcasting(clients, f"{nickname} has left the chat.", client)
-                # Remove the disconnected client from the list
                 clients.remove(client)
                 conn.close()
+                break
 
             except Exception as e:
                 print(f"Error receiving data from {addr}: {e}")
+        time.sleep(0.1)
 
 
-def broadcasting(clients, msg, off_client = None):
+# function to send data to all clients, except off_client
+def broadcasting(clients, msg, off_client=None):
     _, _, nickname = off_client
+
     for client in clients:
         conn, addr, _ = client
 
         if off_client != client or off_client is None:
-            msg = f"[{nickname}] {msg}"
-            conn.send(msg.encode())
+            try:
+                msg_to_send = f"[{nickname}] fgh {msg}"
+                conn.send(msg_to_send.encode())
+
+            except Exception as e:
+                print(f"Error broadcasting to {addr}: {e}")
 
 
-def menu(msg: str, clients):
+# menu to check for commands from the server
+def menu(msg: str, clients, exit_event):
     kick_spliter = msg.split()
 
     if msg == "!help":
         print("!list - listing all running clients \n!kick {nickname} - kick specific client \n"
               "!exit - close all clients ")
 
-    elif kick_spliter[0] == "!kick":
+    elif kick_spliter and kick_spliter[0] == "!kick":  # Check if kick_spliter is not empty
         print("kick")
 
         for client in clients:
             conn, addr, nickname = client
 
-            if nickname == kick_spliter[1]:
+            if len(kick_spliter) > 1 and nickname == kick_spliter[1]:  # Check if there's a nickname provided
                 try:
                     conn.close()
                     clients.remove(client)
+
                     kick_msg = f"{nickname} has been kicked! "
                     print(kick_msg)
-                    broadcasting(clients, kick_msg)
+                    broadcasting(clients, kick_msg, client)
 
                 except Exception as e:
                     print(f"Error closing client socket: {e}")
 
     elif msg == "!exit":
-        print("exit")
+        print("exitMENU")
+        exit_event.set()  # Set the exit_event to signal threads to exit
+        return 1  # Indicate that the program should exit
 
     elif msg == "!list":
         print("listing all the clients: ")
@@ -132,7 +150,24 @@ def menu(msg: str, clients):
             print(f"{str(addr)} \t {nickname}")
 
     else:
-        pass
+        return 0
+
+# function to end all threads, clear clients list, close open sockets
+def exit_program(add_client_thread, recv_thread, send_thread, server, clients):
+
+    add_client_thread.join()
+    recv_thread.join()
+    send_thread.join()
+
+    for client in clients:
+        conn, addr, _ = client
+        conn.close()
+
+    clients.clear()
+    server.close()
+    print("[+] server has been closed!")
+    sys.exit()
+
 
 if __name__ == '__main__':
     main()
