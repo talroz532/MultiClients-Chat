@@ -62,13 +62,15 @@ def recv_data(client, exit_event):
             msg = client.recv(1024)
             if not msg:
                 # If no data is received, the connection might be closed
-                print("Connection closed by the remote host.")
+                print("Connection closed by the server. ")
                 exit_event.set()
                 break
-            print(f"Received message: {msg.decode('utf-8')}")
+            print(msg.decode('utf-8'))
         except Exception as e:
             if not exit_event.is_set():
                 print(f"Error receiving message: {e}")
+                exit_event.set()
+                break
 
 
 def get_nickname():
