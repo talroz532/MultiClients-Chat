@@ -22,6 +22,6 @@ then run`` python client.py `` for each client
 <br><br>
 
 ### TODO list:
-- [ ] handling more errors
+- [x] handling more errors
 - [ ] create a log file
-- [ ] close sockets correctly
+- [x] close sockets correctly
