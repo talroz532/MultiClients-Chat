@@ -24,6 +24,7 @@ def main():
         print("Client failed!")
 
 
+# function to create set up client socket
 def create_socket(exit_event):
     try:
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -35,6 +36,7 @@ def create_socket(exit_event):
         return None
 
 
+# function to send data to all clients
 def send_data(client, nickname, exit_event):
     try:
         client.send(str(nickname).encode())
@@ -56,6 +58,7 @@ def send_data(client, nickname, exit_event):
     client.close()
 
 
+# function to receive data from clients
 def recv_data(client, exit_event):
     while not exit_event.is_set():
         try:
@@ -73,6 +76,7 @@ def recv_data(client, exit_event):
                 break
 
 
+# function to get the nickname of the client
 def get_nickname():
     while True:
         nickname = input("Enter your nickname: ")
@@ -89,6 +93,7 @@ def get_nickname():
     return nickname
 
 
+# function to end all threads, clear clients list, close open socket
 def exit_program(send_thread, recv_thread, client):
     send_thread.join()
     recv_thread.join()
