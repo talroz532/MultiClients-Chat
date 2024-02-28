@@ -8,7 +8,7 @@ first run `` python server.py `` in order to create a server
 
 then run`` python client.py `` for each client
 
-#### server premmisions:
+#### server commands:
 ``!help``
 
 ``!list - listing all running clients``
@@ -17,7 +17,7 @@ then run`` python client.py `` for each client
 
 ``!exit - close all clients``
 <br>
-#### client premmisions:
+#### client commands:
 ``!exit - client exits from the server``
 <br><br>
 
