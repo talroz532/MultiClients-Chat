@@ -85,7 +85,7 @@ def get_nickname():
             print("Max nickname characters is 20")
         elif nickname.isdigit():
             print("Nickname must contain letters")
-        elif nickname.isspace():
+        elif ' ' in nickname:
             print("Nickname cannot contain space")
         else:
             break
