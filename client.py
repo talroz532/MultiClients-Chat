@@ -1,4 +1,4 @@
-import socket, threading, sys
+import socket, threading
 
 IP = "127.0.0.1"
 PORT = 8081
@@ -99,7 +99,6 @@ def exit_program(send_thread, recv_thread, client):
     recv_thread.join()
 
     client.close()
-    sys.exit()
 
 
 if __name__ == '__main__':

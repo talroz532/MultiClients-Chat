@@ -1,5 +1,5 @@
 from socket import *
-import threading, time, sys
+import threading, time
 
 IP = "127.0.0.1"
 PORT = 8081
@@ -166,7 +166,6 @@ def exit_program(add_client_thread, recv_thread, send_thread, server, clients):
     clients.clear()
     server.close()
     print("[+] server has been closed!")
-    sys.exit()
 
 
 if __name__ == '__main__':
