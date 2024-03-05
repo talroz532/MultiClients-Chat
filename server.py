@@ -11,7 +11,7 @@ def main():
         clients = [] #list of all clients
         server = create_server() 
 
-        if server != -1:
+        if server:
             print("[+] server created successfully ")
             add_client_thread = threading.Thread(target=add_client, args=(server, clients, exit_event))
             recv_thread = threading.Thread(target=recv_data, args=(clients, exit_event))
@@ -27,18 +27,17 @@ def main():
     except Exception as e:
         print(e)
 
-    
-
 # setup server
 def create_server():
     try:
         server = socket(AF_INET, SOCK_STREAM)
         server.bind((IP, PORT))
         server.listen(5)
+        return server
     except Exception as e:
         print(str(e))
-        return -1
-    return server
+        return None
+    
 
 # function to add client when client is tring to connect
 def add_client(server, clients, exit_event):
