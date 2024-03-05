@@ -5,23 +5,26 @@ PORT = 8081
 
 
 def main():
-    exit_event = threading.Event()
-    client = create_socket(exit_event)
+    try:
+        exit_event = threading.Event()
+        client = create_socket(exit_event)
 
-    if client:
-        print("Client socket created successfully")
-        nickname = get_nickname()
+        if client:
+            print("Client socket created successfully")
+            nickname = get_nickname()
 
-        send_thread = threading.Thread(target=send_data, args=(client, nickname, exit_event))
-        recv_thread = threading.Thread(target=recv_data, args=(client, exit_event))
+            send_thread = threading.Thread(target=send_data, args=(client, nickname, exit_event))
+            recv_thread = threading.Thread(target=recv_data, args=(client, exit_event))
 
-        send_thread.start()
-        recv_thread.start()
+            send_thread.start()
+            recv_thread.start()
 
-        exit_program(send_thread, recv_thread, client)
+            exit_program(send_thread, recv_thread, client)
 
-    else:
-        print("Client failed!")
+        else:
+            print("Client failed!")
+    except Exception as e:
+        print(e)
 
 
 # function to create set up client socket

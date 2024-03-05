@@ -6,25 +6,28 @@ PORT = 8081
 
 
 def main():
-    exit_event = threading.Event()  # Event to signal threads to exit
-    clients = [] #list of all clients
-    server = create_server() 
+    try:
+        exit_event = threading.Event()  # Event to signal threads to exit
+        clients = [] #list of all clients
+        server = create_server() 
 
-    if server != -1:
-        print("[+] server created successfully ")
-        add_client_thread = threading.Thread(target=add_client, args=(server, clients, exit_event))
-        recv_thread = threading.Thread(target=recv_data, args=(clients, exit_event))
-        send_thread = threading.Thread(target=send_data, args=(clients, exit_event))
+        if server != -1:
+            print("[+] server created successfully ")
+            add_client_thread = threading.Thread(target=add_client, args=(server, clients, exit_event))
+            recv_thread = threading.Thread(target=recv_data, args=(clients, exit_event))
+            send_thread = threading.Thread(target=send_data, args=(clients, exit_event))
 
-        add_client_thread.start()
-        recv_thread.start()
-        send_thread.start()
+            add_client_thread.start()
+            recv_thread.start()
+            send_thread.start()
 
-        exit_program(add_client_thread,recv_thread,send_thread,server,clients)
+            exit_program(add_client_thread,recv_thread,send_thread,server,clients)
+        else:
+            print("server failed!")
+    except Exception as e:
+        print(e)
 
-    else:
-        print("server failed!")
-        return -1
+    
 
 # setup server
 def create_server():
@@ -32,11 +35,9 @@ def create_server():
         server = socket(AF_INET, SOCK_STREAM)
         server.bind((IP, PORT))
         server.listen(5)
-
     except Exception as e:
         print(str(e))
         return -1
-
     return server
 
 # function to add client when client is tring to connect
