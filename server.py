@@ -7,8 +7,8 @@ PORT = 8081
 
 def main():
     exit_event = threading.Event()  # Event to signal threads to exit
-    clients = [] #list of all clients
-    server = create_server() 
+    clients = {}  # Dictionary to store all clients
+    server = create_server()
 
     if server != -1:
         print("[+] server created successfully ")
@@ -20,11 +20,11 @@ def main():
         recv_thread.start()
         send_thread.start()
 
-        exit_program(add_client_thread,recv_thread,send_thread,server,clients)
+        exit_program(add_client_thread, recv_thread, send_thread, server, clients)
 
     else:
         print("server failed!")
-        return -1
+
 
 # setup server
 def create_server():
@@ -39,7 +39,8 @@ def create_server():
 
     return server
 
-# function to add client when client is tring to connect
+
+# function to add client when a client is trying to connect
 def add_client(server, clients, exit_event):
     server.settimeout(1)  # Set a timeout on server.accept()
 
@@ -47,7 +48,8 @@ def add_client(server, clients, exit_event):
         try:
             conn, addr = server.accept()
             nickname = conn.recv(1024).decode('utf-8')
-            clients.append((conn, addr, nickname))
+            
+            clients.update({nickname: (conn, addr)})
             print(f"new connection from {str(addr)} {nickname}")
         except timeout:
             pass
@@ -61,8 +63,7 @@ def send_data(clients, exit_event):
         msg = input()
         if menu(msg, clients, exit_event) == 0:
             msg = "[SERVER] " + msg
-            for client in clients:
-                conn, addr, _ = client
+            for nickname, (conn, addr) in clients.items():
                 try:
                     conn.send(msg.encode())
                 except Exception as e:
@@ -72,22 +73,21 @@ def send_data(clients, exit_event):
 # function to receive data from clients
 def recv_data(clients, exit_event):
     while not exit_event.is_set():  # Check exit_event before continuing
-        for client in clients:
-            conn, addr, nickname = client
+        for nickname, (conn, addr) in clients.items():
             try:
                 conn.setblocking(0)
                 msg = conn.recv(1024).decode('utf-8')
                 if msg:
-                    broadcasting(clients, msg, client)
+                    broadcasting(clients, msg, (conn, addr, nickname))
                     print(f"{addr} [{nickname}] {msg}")
 
             except BlockingIOError:
                 pass
             except ConnectionResetError:
                 print(f"Connection closed by {addr} [{nickname}]")
-                broadcasting(clients, f"{nickname} has left the chat.", client)
-                clients.remove(client)
+                broadcasting(clients, f"{nickname} has left the chat.", (conn, addr, nickname))
                 conn.close()
+                del clients[nickname]
                 break
 
             except Exception as e:
@@ -99,12 +99,10 @@ def recv_data(clients, exit_event):
 def broadcasting(clients, msg, off_client=None):
     _, _, nickname = off_client
 
-    for client in clients:
-        conn, addr, _ = client
-
-        if off_client != client or off_client is None:
+    for dest_nickname, (conn, addr) in clients.items():
+        if off_client != (conn, addr, dest_nickname) or off_client is None:
             try:
-                msg_to_send = f"[{nickname}] fgh {msg}"
+                msg_to_send = f"[{nickname}] {msg}"
                 conn.send(msg_to_send.encode())
 
             except Exception as e:
@@ -113,54 +111,50 @@ def broadcasting(clients, msg, off_client=None):
 
 # menu to check for commands from the server
 def menu(msg: str, clients, exit_event):
-    kick_spliter = msg.split()
+    kick_splitter = msg.split()
 
     if msg == "!help":
         print("!list - listing all running clients \n!kick {nickname} - kick specific client \n"
               "!exit - close all clients ")
 
-    elif kick_spliter and kick_spliter[0] == "!kick":  # Check if kick_spliter is not empty
+    elif kick_splitter and kick_splitter[0] == "!kick":  # Check if kick_splitter is not empty
         print("kick")
 
-        for client in clients:
-            conn, addr, nickname = client
-
-            if len(kick_spliter) > 1 and nickname == kick_spliter[1]:  # Check if there's a nickname provided
+        for nickname in list(clients.keys()):  # Create a copy of the keys before iterating
+            if len(kick_splitter) > 1 and nickname == kick_splitter[1]:  # Check if there's a nickname provided
                 try:
+                    conn, addr = clients[nickname]
                     conn.close()
-                    clients.remove(client)
+                    del clients[nickname]
 
                     kick_msg = f"{nickname} has been kicked! "
                     print(kick_msg)
-                    broadcasting(clients, kick_msg, client)
+                    broadcasting(clients, kick_msg, (conn, addr, nickname))
 
                 except Exception as e:
                     print(f"Error closing client socket: {e}")
 
     elif msg == "!exit":
-        print("exitMENU")
         exit_event.set()  # Set the exit_event to signal threads to exit
         return 1  # Indicate that the program should exit
 
     elif msg == "!list":
         print("listing all the clients: ")
         print("\n\t ADDRESS \t\t NICKNAME \n")
-        for client in clients:
-            conn, addr, nickname = client
+        for nickname, (conn, addr) in clients.items():
             print(f"{str(addr)} \t {nickname}")
 
     else:
         return 0
 
+
 # function to end all threads, clear clients list, close open sockets
 def exit_program(add_client_thread, recv_thread, send_thread, server, clients):
-
     add_client_thread.join()
     recv_thread.join()
     send_thread.join()
 
-    for client in clients:
-        conn, addr, _ = client
+    for nickname, (conn, addr) in clients.items():
         conn.close()
 
     clients.clear()
